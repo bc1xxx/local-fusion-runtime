@@ -12,7 +12,7 @@ from app.schemas import FusionResponse, WorkerOutput
 
 logger = logging.getLogger(__name__)
 
-MODE_MODELS: dict[str, list[str]] = {
+_FULL_MODELS: dict[str, list[str]] = {
     "general": [settings.general_model],
     "reasoning": [settings.reasoner_model, settings.general_model],
     "code": [settings.coder_model, settings.reasoner_model],
@@ -25,7 +25,7 @@ MODE_MODELS: dict[str, list[str]] = {
     ],
 }
 
-MODE_WORKER_PROMPTS = {
+_FULL_PROMPTS = {
     "general": ["You are a helpful assistant. Answer clearly and concisely."],
     "reasoning": [
         "You are a reasoning expert. Break down complex problems step by step. Be thorough and logical.",
@@ -49,11 +49,17 @@ MODE_WORKER_PROMPTS = {
 
 
 def _models_for_mode(mode: str) -> list[str]:
-    return MODE_MODELS.get(mode, MODE_MODELS["general"])
+    models = _FULL_MODELS.get(mode, _FULL_MODELS["general"])
+    if settings.profile == "lite" and mode != "all":
+        return models[:1]
+    return models
 
 
 def _prompts_for_mode(mode: str) -> list[str]:
-    return MODE_WORKER_PROMPTS.get(mode, MODE_WORKER_PROMPTS["general"])
+    prompts = _FULL_PROMPTS.get(mode, _FULL_PROMPTS["general"])
+    if settings.profile == "lite" and mode != "all":
+        return prompts[:1]
+    return prompts
 
 
 async def _run_workers(
@@ -109,8 +115,12 @@ async def run_fusion(
         else:
             critic_content = "Single response — no cross-comparison needed."
 
+        judge_model = settings.judge_model
+        if settings.profile == "strong" and settings.judge_model_strong:
+            judge_model = settings.judge_model_strong
+
         judge_content, _ = await call_model(
-            settings.judge_model,
+            judge_model,
             JUDGE_SYSTEM,
             f"User question: {prompt}\n\nRaw responses:\n{combined}\n\nCritic analysis:\n{critic_content}",
             client=client,

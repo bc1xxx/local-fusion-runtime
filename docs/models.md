@@ -42,9 +42,17 @@ LFR_OLLAMA_TIMEOUT=60
 - **Critic:** Needs strong instruction following. Phi and Qwen work well.
 - **Judge:** Needs good synthesis ability. Qwen and larger Llama models work best.
 
+## Hardware Profile Guidance
+
+Which models you should pull depends on your hardware. See [hardware-profiles.md](hardware-profiles.md) for:
+
+- **16 GB profile** (lite) — lightweight models for laptops
+- **32 GB profile** (strong) — stronger models for desktops/workstations
+- Per-profile pull commands and expected performance
+
 ## Requirements
 
-All models run locally via Ollama. Pull them with:
+At minimum, pull the core models:
 
 ```bash
 ollama pull llama3.2:3b

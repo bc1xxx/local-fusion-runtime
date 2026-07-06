@@ -90,6 +90,25 @@ ollama pull gemma3:4b
 
 > **Note:** Model names are configured in `app/config.py` and can be overridden via environment variables. If a model doesn't exist yet, swap it for an available model (see [docs/models.md](docs/models.md)).
 
+## Hardware Profiles
+
+Choose the profile that matches your hardware. Set it via environment variable or `.env` file.
+
+| Profile | RAM | Best for | Workers | Judge | Est. Score |
+|---------|-----|----------|---------|-------|-----------|
+| Lite (default) | 16 GB | Simple local AI, writing, basic code, planning | 1–2 | qwen3.5:4b | 550–700 |
+| Strong | 32 GB | Better reasoning, coding, RAG, all-mode tests | 2–3 | qwen3:8b | 650–850 |
+
+```bash
+# Lite profile (default — 16 GB friendly)
+export LFR_PROFILE=lite
+
+# Strong profile (32 GB recommended)
+export LFR_PROFILE=strong
+```
+
+See [docs/hardware-profiles.md](docs/hardware-profiles.md) for full details, model pull commands per profile, and expected performance.
+
 ## Run
 
 ```bash
