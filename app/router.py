@@ -1,8 +1,6 @@
 import logging
-import httpx
 
 from app.config import settings
-from app.ollama_client import ollama_chat
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +16,14 @@ ROUTER_SYSTEM = (
 )
 
 
-async def classify(prompt: str, client: httpx.AsyncClient | None = None) -> str:
+async def classify(prompt: str, provider: object) -> str:
     messages = [
         {"role": "system", "content": ROUTER_SYSTEM},
         {"role": "user", "content": prompt},
     ]
     try:
-        raw = await ollama_chat(settings.router_model, messages, client)
+        router_model = settings.get_model_for_role("router")
+        raw = await provider.chat(router_model, messages)
         mode = raw.strip().lower().rstrip(".")
         if mode in VALID_MODES:
             return mode

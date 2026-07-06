@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.fusion import run_fusion
-from app.ollama_client import OllamaNotRunning, ModelNotFound, OllamaError
+from app.providers import ProviderNotRunning, ModelNotFound, ProviderError
 from app.schemas import (
     ChatMessage,
     ChatRequest,
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Local Fusion Runtime", version="0.1.0")
 
 
-@app.exception_handler(OllamaNotRunning)
-async def ollama_not_running_handler(request: Request, exc: OllamaNotRunning):
+@app.exception_handler(ProviderNotRunning)
+async def provider_not_running_handler(request: Request, exc: ProviderNotRunning):
     return JSONResponse(status_code=503, content={"error": str(exc)})
 
 
@@ -35,8 +35,8 @@ async def model_not_found_handler(request: Request, exc: ModelNotFound):
     return JSONResponse(status_code=400, content={"error": str(exc)})
 
 
-@app.exception_handler(OllamaError)
-async def ollama_error_handler(request: Request, exc: OllamaError):
+@app.exception_handler(ProviderError)
+async def provider_error_handler(request: Request, exc: ProviderError):
     return JSONResponse(status_code=502, content={"error": str(exc)})
 
 
@@ -48,14 +48,17 @@ async def health():
 @app.get("/v1/models", response_model=ModelsResponse)
 async def list_models():
     models = [
-        ModelInfo(id=settings.router_model, role="router"),
-        ModelInfo(id=settings.reasoner_model, role="reasoner"),
-        ModelInfo(id=settings.coder_model, role="coder"),
-        ModelInfo(id=settings.general_model, role="general"),
-        ModelInfo(id=settings.critic_model, role="critic"),
-        ModelInfo(id=settings.judge_model, role="judge"),
+        ModelInfo(id=settings.get_model_for_role("router"), role="router"),
+        ModelInfo(id=settings.get_model_for_role("reasoner"), role="reasoner"),
+        ModelInfo(id=settings.get_model_for_role("coder"), role="coder"),
+        ModelInfo(id=settings.get_model_for_role("general"), role="general"),
+        ModelInfo(id=settings.get_model_for_role("critic"), role="critic"),
+        ModelInfo(id=settings.get_model_for_role("judge"), role="judge"),
     ]
-    return ModelsResponse(models=models)
+    return ModelsResponse(
+        models=models,
+        provider=settings.local_fusion_provider,
+    )
 
 
 @app.post("/v1/fusion", response_model=FusionResponse)

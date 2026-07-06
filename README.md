@@ -64,33 +64,63 @@
 ## Prerequisites
 
 - Python 3.11+
-- [Ollama](https://ollama.com) installed and running
+- Either [Ollama](https://ollama.com) or [LM Studio](https://lmstudio.ai) installed
 
 ## Install
 
 ```bash
-# Clone the repo
 git clone https://github.com/your-username/local-fusion-runtime.git
 cd local-fusion-runtime
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Pull Models
+## Local Backends
 
-The runtime uses four default models. Pull them with Ollama:
+You can run Local Fusion Runtime with either **Ollama** or **LM Studio**. Both backends run entirely on your machine. No cloud calls, no API keys, no telemetry.
+
+Set the provider with the `LOCAL_FUSION_PROVIDER` environment variable:
+
+```bash
+export LOCAL_FUSION_PROVIDER=ollama    # default
+export LOCAL_FUSION_PROVIDER=lmstudio  # alternative
+```
+
+### Ollama Setup
+
+Pull the default models and start Ollama:
 
 ```bash
 ollama pull llama3.2:3b
 ollama pull phi4-mini
 ollama pull qwen3.5:4b
 ollama pull gemma3:4b
+
+# Start Ollama if not already running
+ollama serve
 ```
 
-> **Note:** Model names are configured in `app/config.py` and can be overridden via environment variables. If a model doesn't exist yet, swap it for an available model (see [docs/models.md](docs/models.md)).
->
-> For profile-specific pull commands (16 GB vs 32 GB), see [docs/hardware-profiles.md](docs/hardware-profiles.md).
+Run with Ollama:
+
+```bash
+LOCAL_FUSION_PROVIDER=ollama uvicorn app.main:app --host 0.0.0.0 --port 8080
+```
+
+### LM Studio Setup
+
+1. Download and open [LM Studio](https://lmstudio.ai).
+2. Download and load local models in LM Studio.
+3. Go to **Developer** / **Local Server** and start the server.
+4. Confirm the server is running at `http://localhost:1234/v1`.
+
+LM Studio model names may differ from Ollama tags. Use `LMSTUDIO_*_MODEL` env vars if needed (see [docs/providers.md](docs/providers.md)).
+
+Run with LM Studio:
+
+```bash
+LOCAL_FUSION_PROVIDER=lmstudio uvicorn app.main:app --host 0.0.0.0 --port 8080
+```
+
+See [docs/providers.md](docs/providers.md) for detailed provider setup and model name configuration.
 
 ## Hardware Profiles
 
@@ -170,25 +200,46 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 
 ## Configuration
 
-Set environment variables with the `LFR_` prefix to override defaults:
+All settings can be configured via environment variables or a `.env` file (see `.env.example`).
+
+### Provider
 
 ```bash
-# Change any model
-export LFR_ROUTER_MODEL="llama3.2:3b"
-export LFR_REASONER_MODEL="phi4-mini"
-export LFR_CODER_MODEL="qwen3.5:4b"
-export LFR_GENERAL_MODEL="gemma3:4b"
-export LFR_CRITIC_MODEL="phi4-mini"
-export LFR_JUDGE_MODEL="qwen3.5:4b"
-
-# Change Ollama URL
-export LFR_OLLAMA_URL="http://localhost:11434"
-
-# Change timeout (seconds)
-export LFR_OLLAMA_TIMEOUT=60
+export LOCAL_FUSION_PROVIDER=ollama    # or lmstudio
+export OLLAMA_BASE_URL=http://localhost:11434
+export LMSTUDIO_BASE_URL=http://localhost:1234/v1
 ```
 
-Or copy `.env.example` to `.env` and uncomment the variables you need.
+### Models
+
+```bash
+export ROUTER_MODEL=llama3.2:3b
+export REASONER_MODEL=phi4-mini
+export CODER_MODEL=qwen3.5:4b
+export GENERAL_MODEL=gemma3:4b
+export CRITIC_MODEL=phi4-mini
+export JUDGE_MODEL=qwen3.5:4b
+```
+
+### LM Studio Model Overrides
+
+Use these if your LM Studio model names differ from the defaults:
+
+```bash
+export LMSTUDIO_ROUTER_MODEL=
+export LMSTUDIO_REASONER_MODEL=
+export LMSTUDIO_CODER_MODEL=
+export LMSTUDIO_GENERAL_MODEL=
+export LMSTUDIO_CRITIC_MODEL=
+export LMSTUDIO_JUDGE_MODEL=
+```
+
+### Profile & Timeout
+
+```bash
+export LOCAL_FUSION_PROFILE=lite     # or strong
+export REQUEST_TIMEOUT_SECONDS=180
+```
 
 ## Project Structure
 

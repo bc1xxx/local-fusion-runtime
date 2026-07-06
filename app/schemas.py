@@ -36,6 +36,7 @@ class FusionResponse(BaseModel):
     selected_mode: str
     models_used: list[str]
     latency: float
+    provider: str = "ollama"
     local_only: bool = True
     raw_outputs: Optional[list[WorkerOutput]] = None
 
@@ -65,6 +66,7 @@ class HealthResponse(BaseModel):
     version: str = "0.1.0"
     status: str = "running"
     local_only: bool = True
+    provider: str = "ollama"
     endpoints: list[str] = ["/v1/fusion", "/v1/chat/completions", "/v1/models"]
 
 
@@ -76,4 +78,5 @@ class ModelInfo(BaseModel):
 
 
 class ModelsResponse(BaseModel):
+    provider: str = "ollama"
     models: list[ModelInfo]
