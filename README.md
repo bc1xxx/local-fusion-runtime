@@ -3,26 +3,50 @@
 **A fully local compound AI runtime** — route prompts across multiple small Ollama models, run critic and judge passes, and get one synthesized answer. All inference runs on your machine. No cloud, no API keys, no telemetry.
 
 ```
-                    ┌──────────┐
-User Prompt ──────▶│  Router  │────▶ Classification
-                    └──────────┘         │
-                                         ▼
-                              ┌──────────────────┐
-                              │  Worker Models   │
-                              │  (async in parallel)
-                              └────────┬─────────┘
-                                       │
-                              ┌────────▼─────────┐
-                              │     Critic       │
-                              │  (quality check) │
-                              └────────┬─────────┘
-                                       │
-                              ┌────────▼─────────┐
-                              │     Judge        │
-                              │  (synthesize)    │
-                              └────────┬─────────┘
-                                       ▼
-                                 Final Answer
+┌──────────────────────────┐
+│       USER PROMPT        │
+└────────────┬─────────────┘
+             │
+             ▼
+┌────────────────────────────────┐
+│ ROUTER                         │
+│ Llama 3.2 3B Instruct          │
+│ Fast task classifier           │
+└────────────┬───────────────────┘
+             │
+  ┌──────────┼─────────────┬─────┘
+  ▼          ▼             ▼
+┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
+│ REASONING MODEL  │ │ CODING MODEL     │ │ GENERAL MODEL    │
+│ Phi-4 Mini       │ │ Qwen3 / Qwen3.5  │ │ Gemma 3 4B       │
+│ 3.8B             │ │ 4B               │ │ 4B               │
+│ Logic, math,     │ │ code, APIs,      │ │ writing, summary,│
+│ analysis         │ │ debugging        │ │ broad answers    │
+└────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘
+         │                    │                     │
+         └────────────────────┼─────────────────────┘
+                              ▼
+┌────────────────────────────────┐
+│ RAG / EMBEDDINGS               │
+│ nomic-embed-text or bge-m3     │
+│ local docs, code, memory       │
+└────────────┬───────────────────┘
+             ▼
+┌────────────────────────────────┐
+│ CRITIC                         │
+│ Qwen3 4B or Phi-4 Mini        │
+│ finds weak logic / bad claims  │
+└────────────┬───────────────────┘
+             ▼
+┌────────────────────────────────┐
+│ JUDGE                          │
+│ Qwen3.5 4B or Qwen3 8B Q4     │
+│ merges final answer            │
+└────────────┬───────────────────┘
+             ▼
+┌────────────────────────────────┐
+│ FINAL LOCAL FUSION ANSWER      │
+└────────────────────────────────┘
 ```
 
 ## Features
