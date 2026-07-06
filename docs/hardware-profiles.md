@@ -1,165 +1,252 @@
 # Hardware Profiles
 
-The runtime is designed for small local models, usually under 7–8 GB each when quantized. Total RAM still matters because multiple models may be loaded or called during the same request. These profiles help you pick the right setup for your machine.
+Local Fusion Runtime is designed to run small local models through Ollama.
+Each model should stay around the **7–8 GB or lower** range when quantized, but total system RAM still matters because multiple models may be called during one request.
 
-| Profile | RAM | Best for | Workers | Judge | Est. Score |
-|---------|-----|----------|---------|-------|-----------|
-| Lite | 16 GB | Simple local AI, writing, basic code, planning | 1–2 | qwen3.5:4b | 550–700 |
-| Strong Local | 32 GB | Better reasoning, coding, RAG, all-mode tests | 2–3 | qwen3:8b | 650–850 |
+The two recommended profiles are:
 
-> **Effective score** is a project estimate, not an official benchmark. Do not treat it as a verified LLM benchmark score until the project has its own benchmark suite.
+* **Lite Profile** — for 16 GB RAM machines
+* **Strong Local Profile** — for 32 GB RAM machines
+
+> Effective scores are rough project estimates, not official LLM Stats scores. Real scoring requires benchmarking the full system.
 
 ---
 
-## 16 GB RAM Profile
+## 16 GB RAM — Lite Profile
 
-A lightweight setup for a normal laptop or small desktop.
+The 16 GB profile is designed for normal laptops and small desktops.
 
-### Goal
+This setup should avoid loading too many models at the same time. It works best with sequential model calls and only 1–2 worker models per request.
 
-- Simple local use
-- Avoid keeping too many models loaded at once
-- Prefer sequential model calls over parallel
-- Use smaller 3B–4B models
-- Judge capped at 4B
+```txt
+                         ┌──────────────────────────┐
+                         │        USER PROMPT       │
+                         └────────────┬─────────────┘
+                                      │
+                                      ▼
+                  ┌────────────────────────────────┐
+                  │ ROUTER                         │
+                  │ Llama 3.2 3B Instruct          │
+                  │ Fast task classifier            │
+                  └────────────┬───────────────────┘
+                               │
+             ┌─────────────────┼─────────────────┐
+             ▼                                   ▼
 
-### Recommended Models
+┌────────────────────────────┐       ┌────────────────────────────┐
+│ SELECTED WORKER MODEL      │       │ GENERAL FALLBACK MODEL     │
+│ Phi-4 Mini or Qwen3.5 4B   │       │ Gemma 3 4B                 │
+│ Reasoning, code, writing,  │       │ summaries, broad answers   │
+│ or planning task           │       │ and simple responses       │
+└─────────────┬──────────────┘       └─────────────┬──────────────┘
+              │                                    │
+              └─────────────────┬──────────────────┘
+                                ▼
+                  ┌────────────────────────────────┐
+                  │ OPTIONAL RAG / EMBEDDINGS      │
+                  │ nomic-embed-text               │
+                  │ local docs, code, memory        │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ CRITIC                         │
+                  │ Phi-4 Mini                     │
+                  │ finds weak logic / bad claims   │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ JUDGE                          │
+                  │ Qwen3.5 4B                     │
+                  │ merges final answer             │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ FINAL LOCAL FUSION ANSWER      │
+                  └────────────────────────────────┘
+```
 
-| Role | Model | Size |
-|------|-------|------|
-| Router | `llama3.2:3b` | 3B |
-| General | `gemma3:4b` | 4B |
-| Reasoner | `phi4-mini` | ~4B |
-| Coder | `qwen3.5:4b` | 4B |
-| Critic | `phi4-mini` | ~4B |
-| Judge | `qwen3.5:4b` | 4B |
-| Embeddings | `nomic-embed-text` | ~0.5B |
+### Recommended models
 
-### Pull Commands
+```txt
+Router:        llama3.2:3b
+Reasoner:      phi4-mini
+Coder:         qwen3.5:4b
+General:       gemma3:4b
+Critic:        phi4-mini
+Judge:         qwen3.5:4b
+Embeddings:    nomic-embed-text
+```
+
+### Recommended Ollama pulls
 
 ```bash
 ollama pull llama3.2:3b
-ollama pull gemma3:4b
 ollama pull phi4-mini
 ollama pull qwen3.5:4b
+ollama pull gemma3:4b
 ollama pull nomic-embed-text
 ```
 
-### Runtime Behavior
+### Runtime behavior
 
-- Default to `auto` mode
-- Router selects only 1 worker per request
-- Critic + judge run after worker output
-- Avoid `all` mode unless you understand it will be slower
+```txt
+Default mode: auto
+Worker count: 1–2 per request
+Judge: qwen3.5:4b
+Best for: writing, summaries, basic code, planning, local Q&A
+Avoid: heavy all-mode usage, long context, deep math, complex coding
+```
 
-### Expected Performance
+### Estimated effective score
 
-- Good for writing, summaries, basic coding, planning, local Q&A, lightweight reasoning
-- Slower when many models are called
-- May struggle with complex coding, deep math, long context, advanced reasoning
-
-### Effective Score Estimate
-
-| Configuration | Score |
-|---|---|
-| Single small model | 350–550 |
-| 16 GB Local Fusion Runtime | 550–700 |
-| Well-tuned 16 GB + good prompts + RAG | 650–750 |
+```txt
+Single small model:                 350–550
+16 GB Local Fusion Runtime:          550–700
+Well-tuned 16 GB setup with RAG:     650–750
+```
 
 ---
 
-## 32 GB RAM Profile
+## 32 GB RAM — Strong Local Profile
 
-A stronger local setup for a capable desktop or workstation.
+The 32 GB profile is designed for stronger laptops, desktops, and Apple Silicon machines with more unified memory.
 
-### Goal
+This setup can use more workers per request and can use a stronger 8B judge.
 
-- Better compound reasoning
-- Use more workers per request
-- Use a stronger 8B judge
-- Comfortable with local RAG and all-mode experiments
-- Still avoid giant 30B/70B/120B models
+```txt
+                         ┌──────────────────────────┐
+                         │        USER PROMPT       │
+                         └────────────┬─────────────┘
+                                      │
+                                      ▼
+                  ┌────────────────────────────────┐
+                  │ ROUTER                         │
+                  │ Llama 3.2 3B Instruct          │
+                  │ Fast task classifier            │
+                  └────────────┬───────────────────┘
+                               │
+       ┌───────────────────────┼────────────────────────┐
+       ▼                       ▼                        ▼
 
-### Recommended Models
+┌──────────────────┐   ┌──────────────────┐    ┌──────────────────┐
+│ REASONING MODEL  │   │ CODING MODEL     │    │ GENERAL MODEL    │
+│ Phi-4 Mini       │   │ Qwen3.5 4B       │    │ Gemma 3 4B       │
+│ Logic, math,     │   │ code, APIs,      │    │ writing, summary,│
+│ analysis         │   │ debugging        │    │ broad answers    │
+└────────┬─────────┘   └────────┬─────────┘    └────────┬─────────┘
+         │                      │                       │
+         └──────────────────────┼───────────────────────┘
+                                ▼
+                  ┌────────────────────────────────┐
+                  │ OPTIONAL STRONG WORKER         │
+                  │ Qwen3 8B Q4                    │
+                  │ deeper reasoning / judging      │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ RAG / EMBEDDINGS               │
+                  │ nomic-embed-text or bge-m3     │
+                  │ local docs, code, memory        │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ CRITIC                         │
+                  │ Phi-4 Mini or Qwen3.5 4B       │
+                  │ finds weak logic / bad claims   │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ JUDGE                          │
+                  │ Qwen3 8B Q4                    │
+                  │ merges final answer             │
+                  └────────────┬───────────────────┘
+                               ▼
+                  ┌────────────────────────────────┐
+                  │ FINAL LOCAL FUSION ANSWER      │
+                  └────────────────────────────────┘
+```
 
-| Role | Model | Size |
-|------|-------|------|
-| Router | `llama3.2:3b` | 3B |
-| General | `gemma3:4b` | 4B |
-| Reasoner | `phi4-mini` | ~4B |
-| Coder | `qwen3.5:4b` | 4B |
-| Optional second coder/reasoner | `qwen3:8b` | 8B |
-| Critic | `phi4-mini` | ~4B |
-| Judge | `qwen3:8b` | 8B |
-| Embeddings | `nomic-embed-text` or `bge-m3` | ~0.5B |
+### Recommended models
 
-### Pull Commands
+```txt
+Router:        llama3.2:3b
+Reasoner:      phi4-mini
+Coder:         qwen3.5:4b
+General:       gemma3:4b
+Strong worker: qwen3:8b
+Critic:        phi4-mini or qwen3.5:4b
+Judge:         qwen3:8b
+Embeddings:    nomic-embed-text or bge-m3
+```
+
+### Recommended Ollama pulls
 
 ```bash
 ollama pull llama3.2:3b
-ollama pull gemma3:4b
 ollama pull phi4-mini
 ollama pull qwen3.5:4b
+ollama pull gemma3:4b
 ollama pull qwen3:8b
 ollama pull nomic-embed-text
 ```
 
-Optional:
+Optional stronger embedding model:
 
 ```bash
 ollama pull bge-m3
 ```
 
-### Runtime Behavior
+### Runtime behavior
 
-- Default to `auto` mode
-- Can comfortably use 2–3 workers per request
-- `all` mode is more realistic on 32 GB than 16 GB
-- Judge should use the strongest available local model (`qwen3:8b`)
-- Falls back to `qwen3.5:4b` if 8B model not installed
-
-### Expected Performance
-
-- Better final answers because the system compares more model outputs
-- Better for code review, reasoning, planning, local research, and RAG
-- Still not equal to frontier cloud models
-- Main advantage is privacy, local control, and better results than one small model alone
-
-### Effective Score Estimate
-
-| Configuration | Score |
-|---|---|
-| Single small model | 350–550 |
-| 32 GB Local Fusion Runtime | 650–800 |
-| Well-tuned 32 GB + 8B judge + RAG | 750–850 |
-
-> The compound system can score higher than one small model because it uses routing, multiple model perspectives, critic review, judge synthesis, and optional RAG.
-
----
-
-## Score Methodology
-
-"Scores" are rough effective-capability estimates based on the project maintainers' experience with local models. They are not official LLM benchmark results. The real score should be measured with proper benchmarks once the project has its own benchmark suite.
-
-Do not market these scores as verified LLM Stats results.
-
----
-
-## Configuration
-
-Set the profile via environment variable:
-
-```bash
-export LFR_PROFILE=lite    # 16 GB behavior (default)
-export LFR_PROFILE=strong  # 32 GB behavior
+```txt
+Default mode: auto
+Worker count: 2–3 per request
+Judge: qwen3:8b
+Best for: better reasoning, code review, planning, RAG, local research
+Can use: all mode for testing
+Avoid: expecting frontier cloud model performance
 ```
 
-## How Profile Affects Behavior
+### Estimated effective score
 
-| Setting | `lite` (16 GB) | `strong` (32 GB) |
-|---------|----------------|------------------|
-| Workers per mode | 1 | 2–3 |
-| `all` mode workers | 4 | 4 |
-| Judge model | `qwen3.5:4b` | `qwen3:8b` (if available) |
-| Parallel calls | Minimized | Full parallel |
-| Best for | Laptops, efficiency | Workstations, quality |
+```txt
+Single small model:                 350–550
+32 GB Local Fusion Runtime:          650–800
+Well-tuned 32 GB setup with RAG:     750–850
+```
+
+---
+
+## Profile Comparison
+
+| Profile      |   RAM | Best for                                                      | Worker count | Judge model  | Estimated effective score |
+| ------------ | ----: | ------------------------------------------------------------- | -----------: | ------------ | ------------------------: |
+| Lite         | 16 GB | Simple local AI, writing, summaries, basic code, planning     |          1–2 | `qwen3.5:4b` |                   550–700 |
+| Strong Local | 32 GB | Better reasoning, coding, RAG, local research, all-mode tests |          2–3 | `qwen3:8b`   |                   650–850 |
+
+---
+
+## Important Note About Effective Score
+
+The effective score is an estimate of the whole compound system, not a verified benchmark.
+
+The system can perform better than one small model because it uses:
+
+```txt
+1. Task routing
+2. Multiple model perspectives
+3. Critic review
+4. Judge synthesis
+5. Optional local RAG
+6. Better prompts per model role
+```
+
+Do not market these numbers as official LLM Stats scores until the project includes a real benchmark suite.
+
+Recommended language:
+
+```txt
+Estimated effective capability: 550–700 on 16 GB RAM.
+Estimated effective capability: 650–850 on 32 GB RAM.
+Official benchmark score: not yet measured.
+```

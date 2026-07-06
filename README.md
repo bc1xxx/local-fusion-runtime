@@ -89,25 +89,24 @@ ollama pull gemma3:4b
 ```
 
 > **Note:** Model names are configured in `app/config.py` and can be overridden via environment variables. If a model doesn't exist yet, swap it for an available model (see [docs/models.md](docs/models.md)).
+>
+> For profile-specific pull commands (16 GB vs 32 GB), see [docs/hardware-profiles.md](docs/hardware-profiles.md).
 
 ## Hardware Profiles
 
-Choose the profile that matches your hardware. Set it via environment variable or `.env` file.
+Choose the profile that matches your hardware.
 
 | Profile | RAM | Best for | Workers | Judge | Est. Score |
-|---------|-----|----------|---------|-------|-----------|
-| Lite (default) | 16 GB | Simple local AI, writing, basic code, planning | 1–2 | qwen3.5:4b | 550–700 |
-| Strong | 32 GB | Better reasoning, coding, RAG, all-mode tests | 2–3 | qwen3:8b | 650–850 |
+|---------|-----|----------|--------|-------|-----------|
+| Lite (default) | 16 GB | Writing, summaries, basic code, planning, local Q&A | 1–2 | qwen3.5:4b | 550–700 |
+| Strong | 32 GB | Reasoning, code review, RAG, all-mode tests | 2–3 | qwen3:8b | 650–850 |
 
 ```bash
-# Lite profile (default — 16 GB friendly)
-export LFR_PROFILE=lite
-
-# Strong profile (32 GB recommended)
-export LFR_PROFILE=strong
+export LFR_PROFILE=lite      # 16 GB (default)
+export LFR_PROFILE=strong    # 32 GB
 ```
 
-See [docs/hardware-profiles.md](docs/hardware-profiles.md) for full details, model pull commands per profile, and expected performance.
+See [docs/hardware-profiles.md](docs/hardware-profiles.md) for full profiles, ASCII architecture diagrams, pull commands, and score estimates.
 
 ## Run
 
